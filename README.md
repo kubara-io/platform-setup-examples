@@ -93,8 +93,6 @@ flowchart LR
 | cert-manager | Yes | No | POC PKI and certificate issuance |
 | External Secrets Operator | No | Yes | POC certificate refresh from Hub to spoke |
 
-See [docs/DEEP_DIVE.md](docs/DEEP_DIVE.md) for the detailed protocol, certificate, Redis, proxy, and bootstrap explanation.
-
 ## Managed-mode data flow
 
 With namespace-based mapping, the target agent is selected by the **Hub Application namespace**.
@@ -133,8 +131,6 @@ Spoke application status
 ├── diagnose.sh
 ├── Makefile
 ├── test-app.yaml
-├── docs/
-│   └── DEEP_DIVE.md
 ├── manifests/
 │   ├── hub/
 │   │   ├── 01-ca-setup.yaml
@@ -213,7 +209,7 @@ The spoke name must be RFC-1123 compatible because it is used as an agent identi
 ./bootstrap.sh smoke-test staging-cluster
 ```
 
-The smoke test now verifies all of the following:
+The smoke test verifies the following:
 
 1. `managed-agents` exists on the spoke.
 2. The test `Application` is created on the Hub.
@@ -237,7 +233,7 @@ This repository uses **Go for all repository test code**. There is no Python tes
 
 ### Fast Go contract tests
 
-`tests/repository_test.go` protects the invariants that previously caused failures, including:
+`tests/repository_test.go` protects the invariants that ensure the environment builds correctly, including:
 
 - shell scripts pass `bash -n`;
 - YAML templates render without unresolved environment placeholders and retain the expected Kubernetes document shape;
@@ -285,7 +281,7 @@ make e2e E2E_SPOKE=staging-cluster
 
 ### Full environment validation
 
-The strongest architecture test remains a clean environment build followed by the Go-wrapped smoke test:
+The strongest architecture test is a clean environment build followed by the Go-wrapped smoke test:
 
 ```bash
 ./bootstrap.sh init
@@ -326,8 +322,6 @@ Each spoke has **two different client certificates** even though both are signed
 The private keys are intentionally different. Do not reuse the Principal's server certificate as a client certificate.
 
 The Principal itself uses `argocd-agent-principal-tls` as a **server certificate**, with a SAN for the vCluster-visible Principal DNS name. The Agent validates that server certificate against `argocd-agent-ca` and presents `argocd-agent-client-tls` during the same TLS handshake.
-
-Detailed handshake and rotation diagrams are in [docs/DEEP_DIVE.md](docs/DEEP_DIVE.md#tls-pki-and-mtls-in-detail).
 
 ## Redis model
 
@@ -375,7 +369,7 @@ The Principal's Kubernetes Service exposes:
 Service port 443 -> Principal container port 8443
 ```
 
-Agents must therefore connect to **port 443**. Using `8443` against the Service was one of the failures discovered while building this POC.
+Agents must therefore connect to **port 443** (the external Service port), rather than `8443` (the internal container port). 
 
 Do not copy this `hostAliases` approach into production. Use routable private DNS, load balancers, ingress/gateway, or a service mesh appropriate for your platform.
 
@@ -391,23 +385,17 @@ Useful targeted checks:
 
 ```bash
 # Agent connection
-kubectl --context=vcluster-staging-cluster -n argocd \
-  logs deployment/argocd-agent-agent --tail=100
+kubectl --context=vcluster-staging-cluster -n argocd   logs deployment/argocd-agent-agent --tail=100
 
 # Principal authentication / event stream
-kubectl --context=vcluster-hub -n argocd \
-  logs deployment/argocd-agent-principal --tail=100
+kubectl --context=vcluster-hub -n argocd   logs deployment/argocd-agent-principal --tail=100
 
 # Project and Application on spoke
-kubectl --context=vcluster-staging-cluster -n argocd \
-  get appproject,application
+kubectl --context=vcluster-staging-cluster -n argocd   get appproject,application
 
 # Workload on spoke
-kubectl --context=vcluster-staging-cluster -n guestbook \
-  get deployment,pod,svc -o wide
+kubectl --context=vcluster-staging-cluster -n guestbook   get deployment,pod,svc -o wide
 ```
-
-See [docs/DEEP_DIVE.md](docs/DEEP_DIVE.md#troubleshooting-by-layer) for a layered troubleshooting model.
 
 ## Production hardening
 
@@ -439,7 +427,7 @@ Before treating this as a production design, address at least the following:
 
 ## Open-source repository readiness
 
-The technical repository now includes a README, automated validation workflow, and contribution-oriented tests. Before a company publishes the repository externally, the owning organization should also add or confirm its approved community-health and legal files, including:
+The technical repository includes a README, automated validation workflow, and contribution-oriented tests. Before a company publishes the repository externally, the owning organization should also add or confirm its approved community-health and legal files, including:
 
 - `LICENSE`
 - `CONTRIBUTING.md`
@@ -461,6 +449,3 @@ Those files should follow the publishing company's legal, security, and open-sou
 - [Argo CD Agent — Live resources and Redis/resource proxies](https://argocd-agent.readthedocs.io/latest/user-guide/live-resources/)
 - [External Secrets Operator — Kubernetes provider](https://external-secrets.io/latest/provider/kubernetes/)
 
-## License
-
-No license is included in this POC package. A company publishing this repository as open source must add the license approved by its legal/open-source governance process before public release.
