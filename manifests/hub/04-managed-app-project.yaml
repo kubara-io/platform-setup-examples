@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: managed-agents
+  namespace: argocd
+spec:
+  description: Applications routed from the principal to managed agents
+  sourceNamespaces:
+    - "*"
+  sourceRepos:
+    - "*"
+  destinations:
+    - name: "*"
+      server: "*"
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

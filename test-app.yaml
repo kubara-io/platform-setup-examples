@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging-guestbook
+  namespace: staging-cluster
+spec:
+  project: managed-agents
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    # Namespace-based agent mapping is intentionally used in this baseline.
+    # The agent is selected by metadata.namespace == staging-cluster.
+    # This proxy URL lets the Hub Argo CD API/UI address the spoke for live resources.
+    server: "https://argocd-agent-resource-proxy.argocd.svc.cluster.local:9090?agentName=staging-cluster"
+    namespace: guestbook
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-${SPOKE_NAME}
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    argocd-agent.argoproj-labs.io/agent-name: "${SPOKE_NAME}"
+  annotations:
+    managed-by: argocd-agent
+type: Opaque
+stringData:
+  name: "${SPOKE_NAME}"
+  server: "https://argocd-agent-resource-proxy.argocd.svc.cluster.local:9090?agentName=${SPOKE_NAME}"
+  config: |
+    {
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "${RESOURCE_PROXY_CA}",
+        "certData": "${RESOURCE_PROXY_CLIENT_CERT}",
+        "keyData": "${RESOURCE_PROXY_CLIENT_KEY}"
+      }
+    }

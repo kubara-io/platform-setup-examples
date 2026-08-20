@@ -1,0 +1,64 @@
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: hub-cluster-store
+  namespace: argocd
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: ${SPOKE_NAME}
+      server:
+        url: "https://hub.vcluster-hub.svc.cluster.local:443"
+        caProvider:
+          type: Secret
+          name: hub-api-auth
+          key: ca.crt
+      auth:
+        token:
+          bearerToken:
+            name: hub-api-auth
+            key: token
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: sync-agent-client-tls
+  namespace: argocd
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    name: hub-cluster-store
+    kind: SecretStore
+  target:
+    name: argocd-agent-client-tls
+    creationPolicy: Merge
+    template:
+      type: kubernetes.io/tls
+  data:
+    - secretKey: tls.crt
+      remoteRef:
+        key: ${SPOKE_NAME}-agent-client-tls
+        property: tls.crt
+    - secretKey: tls.key
+      remoteRef:
+        key: ${SPOKE_NAME}-agent-client-tls
+        property: tls.key
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: sync-agent-root-ca
+  namespace: argocd
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    name: hub-cluster-store
+    kind: SecretStore
+  target:
+    name: argocd-agent-ca
+    creationPolicy: Merge
+  data:
+    - secretKey: ca.crt
+      remoteRef:
+        key: ${SPOKE_NAME}-agent-client-tls
+        property: ca.crt

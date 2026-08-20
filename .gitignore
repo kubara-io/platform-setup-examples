@@ -1,0 +1,28 @@
+# Go build/test artifacts
+bin/
+*.test
+coverage.out
+coverage.html
+
+# macOS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Local environment files
+.env
+.env.*
+
+# Never commit generated credentials or private key material
+*.key
+*.pem
+*.p12
+*.pfx
+kubeconfig*
+
+# Temporary/rendered files
+.tmp/
+tmp/
+rendered/
+
+docs/DEEP_DIVE.md

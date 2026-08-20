@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${SPOKE_NAME}-resource-proxy-client-cert
+  namespace: argocd
+spec:
+  secretName: ${SPOKE_NAME}-resource-proxy-client-tls
+  commonName: ${SPOKE_NAME}
+  usages:
+    - client auth
+  issuerRef:
+    name: kubara-ca-issuer
+    kind: ClusterIssuer

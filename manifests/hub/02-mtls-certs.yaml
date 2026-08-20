@@ -1,0 +1,36 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-agent-principal-tls
+  namespace: argocd
+spec:
+  secretName: argocd-agent-principal-tls
+  commonName: argocd-agent-principal
+  dnsNames:
+    - argocd-agent-principal
+    - argocd-agent-principal.argocd.svc
+    - argocd-agent-principal.argocd.svc.cluster.local
+    - ${PRINCIPAL_EXTERNAL_HOST}
+  usages:
+    - server auth
+  issuerRef:
+    name: kubara-ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-agent-resource-proxy-tls
+  namespace: argocd
+spec:
+  secretName: argocd-agent-resource-proxy-tls
+  commonName: argocd-agent-resource-proxy
+  dnsNames:
+    - argocd-agent-resource-proxy
+    - argocd-agent-resource-proxy.argocd.svc
+    - argocd-agent-resource-proxy.argocd.svc.cluster.local
+  usages:
+    - server auth
+  issuerRef:
+    name: kubara-ca-issuer
+    kind: ClusterIssuer
