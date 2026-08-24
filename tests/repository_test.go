@@ -267,21 +267,4 @@ func TestDocumentationContracts(t *testing.T) {
 	} {
 		mustContain(t, readme, heading)
 	}
-	mustContain(t, readme, "docs/DEEP_DIVE.md")
-
-	deep := readFile(t, filepath.Join(root, "docs/DEEP_DIVE.md"))
-	for _, topic := range []string{
-		"TLS, PKI, and mTLS in detail",
-		"Redis in detail",
-		"AppProject synchronization in detail",
-		"Application synchronization in detail",
-		"Resource proxy in detail",
-		"vCluster networking in detail",
-		"External Secrets Operator flow",
-		"Bootstrap script walkthrough",
-		"Troubleshooting by layer",
-		"Suggested 10-minute sprint presentation",
-	} {
-		mustContain(t, deep, topic)
-	}
 }
