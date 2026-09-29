@@ -1,156 +1,173 @@
-# Argo CD Agent managed-mode Hub/Spoke POC
+# Argo CD Agent managed-mode hub/spoke lab
 
-A local Kind and vCluster proof of concept for Argo CD Agent managed mode.
+A local kind and vCluster proof of concept demonstrating Argo CD Agent managed mode.
 
-The Hub owns `Application` and `AppProject` resources. Each spoke runs its own Agent and application controller, reconciles workloads locally, and sends status back to the Hub. The Hub never connects directly to a spoke Kubernetes API.
+The Hub owns `Application` and `AppProject` definitions. Each spoke runs an Agent alongside a local application controller, reconciles workloads directly, and reports status back to the Hub. The Hub never connects directly to spoke Kubernetes API endpoints.
 
-> [!IMPORTANT]
-> This is a local POC, not a production architecture. It uses broad permissions, self-signed TLS, and `hostAliases` to make nested vClusters work.
+> [!WARNING]
+> This example is a reference lab, not a production-ready configuration. It uses self-signed certificates, broad RBAC, and `hostAliases` to route traffic between nested vClusters. Review and adapt all configurations, credentials, and network policies before live deployment.
 
-## What it proves
+## Purpose
 
-- An Agent authenticates to the Principal with mTLS.
-- The Hub distributes `AppProject` and `Application` resources to a spoke.
-- The spoke reconciles a guestbook workload and returns `Synced` and `Healthy` status.
-- Hub Argo CD reads live resources through the Principal resource proxy.
+Platform teams running kubara often manage multi-cluster environments where central clusters should not have direct inbound network access or cluster-admin kubeconfigs to downstream spoke clusters.
 
-The baseline uses `argocd-agent v0.9.0` and namespace-based agent mapping. A Hub `Application` in the `staging-cluster` namespace routes to the Agent named `staging-cluster`.
+This lab proves an alternative topology using Argo CD Agent:
+- An Agent on the spoke authenticates outbound to the Hub Principal over mTLS.
+- The Hub distributes `AppProject` and `Application` resources down to spokes.
+- The spoke reconciles workloads locally and reports `Synced` and `Healthy` status back up to the Hub.
+- Central Argo CD web UI and CLI view live spoke resources through the Principal resource proxy.
 
-## Topology
+## Architecture
 
-```text
-Hub vCluster
-  argocd-server, repo-server, Redis
-  Principal, Redis proxy, resource proxy
-  cert-manager
-          |
-          | outbound gRPC + mTLS
-          v
-Spoke vCluster
-  Agent, application-controller, repo-server, Redis
-  External Secrets Operator
-  workload Kubernetes API
+```mermaid
+graph TD
+    subgraph Hub["Hub (vCluster on kind)"]
+        AS[argocd-server]
+        RP[Redis proxy]
+        P[Principal & Resource Proxy]
+        CM[cert-manager]
+        AS --> RP
+        RP --> P
+    end
+
+    subgraph Spoke["Spoke (vCluster on kind)"]
+        AG[Agent]
+        AC[application-controller]
+        RS[repo-server]
+        ESO[External Secrets Operator]
+        WL[Workload Pods / Services]
+
+        AG --> AC
+        AC --> WL
+        ESO -.->|Syncs TLS secrets| AG
+    end
+
+    AG -->|Outbound gRPC + mTLS| P
 ```
 
-The Hub has no application controller. The spoke does. That detail matters, it is where reconciliation happens.
+The Hub runs no application controller. The spoke runs its own controller. Reconciliation happens strictly inside the spoke.
 
-## Requirements
+## Type and prerequisites
 
-- Docker-compatible container runtime
-- `kind`, `kubectl`, `helm`, `vcluster`, and `envsubst` from GNU `gettext`
-- Go 1.23 or later for tests
-- Internet access to pull images and fetch GitHub-hosted Kustomize manifests
+- **Type**: `Runnable Lab`
+- **Related kubara concepts**: Multi-cluster topologies, spoke clusters, workload onboarding, Argo CD catalogs.
 
-`bootstrap.sh` defaults to:
+### Requirements
 
-| Dependency | Version or image |
+| Tool | Minimum version | Purpose |
+|---|---|---|
+| Docker / container runtime | latest | kind node execution |
+| kind | v0.20+ | Host cluster |
+| vcluster | v0.19+ | Nested Hub and Spoke virtual clusters |
+| kubectl | v1.28+ | Cluster interaction |
+| helm | v3.12+ | Dependency installations |
+| envsubst (gettext) | latest | Manifest template substitution |
+| Go | 1.23+ | Contract and E2E verification test execution |
+
+Pinned component defaults used during bootstrap:
+
+| Dependency | Pinned version |
 |---|---|
 | Argo CD Agent | `v0.9.0` |
 | cert-manager | `v1.14.4` |
 | External Secrets Operator | `2.8.0` |
-| Redis | `docker.io/library/redis:8.2-alpine` |
+| Redis | `8.2-alpine` |
 
-The Agent overlays still consume Argo CD's `stable` manifest. `AGENT_VERSION` alone does not pin every dependency. Vendor or pin that manifest before production use.
+## Structure
 
-## Quick start
+```text
+argo-cd-agents/
+├── README.md
+├── Makefile               # Test and verification targets
+├── bootstrap.sh           # Lifecycle script (init, add-spoke, smoke-test)
+├── diagnose.sh            # Health check and debugging helper
+├── test-app.yaml          # Sample guestbook workload manifest
+├── manifests/
+│   ├── hub/               # CA, mTLS, Principal config, and AppProject templates
+│   └── spoke/             # ESO sync templates for spoke-side certificates
+└── tests/                 # Repository contract and E2E tests
+```
+
+## How to use
+
+### Step 1: Initialize the Hub
+
+Make scripts executable and initialize the kind host cluster and Hub vCluster:
 
 ```bash
 chmod +x bootstrap.sh diagnose.sh
 ./bootstrap.sh init
-./bootstrap.sh add-spoke staging-cluster
-./bootstrap.sh smoke-test staging-cluster
 ```
 
-Add another spoke with:
+### Step 2: Onboard a spoke cluster
+
+Add a spoke named `staging-cluster` (must follow RFC 1123 DNS naming):
+
+```bash
+./bootstrap.sh add-spoke staging-cluster
+```
+
+You can onboard additional spokes as needed:
 
 ```bash
 ./bootstrap.sh add-spoke production-cluster
-./bootstrap.sh smoke-test production-cluster
 ```
 
-Spoke names must follow RFC 1123. The scripts use the name for both the Agent identity and Hub routing namespace.
+### Step 3: Verification
 
-## Test the repository
+Run the automated smoke test. This submits a test guestbook Application to the Hub, waits for it to propagate to the spoke, confirms reconciliation on the spoke, and verifies that the workload never runs on the Hub:
 
-Run the checks used in CI:
+```bash
+./bootstrap.sh smoke-test staging-cluster
+```
+
+Run static contract checks and syntax validations:
 
 ```bash
 make check
 ```
 
-They run `bash -n`, render the YAML templates, and check the topology contracts. In particular, they catch the easy-to-miss rule that Agents connect to Principal Service port `443`, not container port `8443`.
-
-The end-to-end test needs a running POC and changes cluster resources:
-
-```bash
-RUN_E2E=1 E2E_SPOKE=staging-cluster go test ./tests/e2e -count=1 -v
-```
-
-Or:
+Optionally run the full Go end-to-end test against the running environment:
 
 ```bash
 make e2e E2E_SPOKE=staging-cluster
 ```
 
-## Configuration
+### Diagnostics
 
-```bash
-HOST_CTX=kind-kubara-poc
-HUB_CTX=vcluster-hub
-AGENT_VERSION=v0.9.0
-CERT_MANAGER_VERSION=v1.14.4
-ESO_CHART_VERSION=2.8.0
-REDIS_IMAGE=docker.io/library/redis:8.2-alpine
-```
-
-For example:
-
-```bash
-REDIS_IMAGE=registry.example.com/mirror/redis:8.2-alpine ./bootstrap.sh init
-```
-
-## TLS, Redis, and networking
-
-Each spoke uses two client certificates signed by the same CA. The Agent certificate identifies the Agent to Principal gRPC. The resource-proxy certificate lets Hub Argo CD request live resources for that Agent. They must have different private keys. Do not use the Principal server certificate as a client certificate.
-
-Hub `argocd-server` must use the Principal Redis proxy:
-
-```yaml
-data:
-  redis.server: argocd-agent-redis-proxy:6379
-```
-
-The nested-vCluster setup adds `hostAliases` for the Principal DNS name in the Agent Pod and the Hub API DNS name in the ESO Pod. Those aliases use host-synchronized Service IPs, which survive Pod restarts. Do not copy this arrangement into production. Use routable DNS and normal cross-cluster networking.
-
-## Diagnostics
+If synchronization stalls, inspect components using `diagnose.sh` or direct logs:
 
 ```bash
 ./diagnose.sh staging-cluster
 
-# Agent connection
+# Check spoke Agent logs
 kubectl --context=vcluster-staging-cluster -n argocd \
   logs deployment/argocd-agent-agent --tail=100
 
-# Principal authentication and events
+# Check Hub Principal authentication and events
 kubectl --context=vcluster-hub -n argocd \
   logs deployment/argocd-agent-principal --tail=100
 
-# Spoke workload
+# Inspect spoke workload state
 kubectl --context=vcluster-staging-cluster -n guestbook \
   get deployment,pod,svc -o wide
 ```
 
-## Before production
+## Clean up
 
-- Replace the self-signed CA, generated JWT key, long-lived ESO token, broad RBAC, and wildcard AppProject policy.
-- Remove `hostAliases`, pin or vendor Argo CD, use approved image registries and digests, and enforce NetworkPolicies.
-- Test Principal and Redis failure behavior. Add metrics, centralized logs, alerts, and a certificate-expiry process.
-- Never commit private keys, service-account tokens, kubeconfigs, or generated TLS material.
+To remove the kind cluster and all nested vCluster instances:
 
-## References
+```bash
+kind delete cluster --name kubara-poc
+```
+
+If you configured a custom `HOST_CTX` or cluster name in environment variables, pass that name to `kind delete cluster --name <name>`.
+
+## Where to go from here
 
 - [Argo CD Agent: getting started](https://argocd-agent.readthedocs.io/latest/getting-started/)
 - [Argo CD Agent: managed sync protocol](https://argocd-agent.readthedocs.io/latest/concepts/sync-protocol/)
 - [Argo CD Agent: mapping modes](https://argocd-agent.readthedocs.io/latest/concepts/agent-mapping/)
 - [Argo CD Agent: authentication](https://argocd-agent.readthedocs.io/latest/configuration/authentication/)
 - [Argo CD Agent: live resources](https://argocd-agent.readthedocs.io/latest/user-guide/live-resources/)
+- [kubara spoke cluster documentation](https://docs.kubara.io/v0.16.0/4_building_your_platform/add_spoke_cluster/index.md)
