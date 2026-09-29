@@ -1,0 +1,21 @@
+bootstrapValues:
+  applications:
+    - destination:
+        serverName: hub-cluster
+      info:
+        - name: type
+          value: app-of-apps
+      name: app-of-apps
+      namespace: argocd
+      projectName: hub-cluster-dev
+      repoUrl: https://github.com/my-org/platform-repo.git
+      repoPath: apps
+      ignoreDifferences:
+        - group: argoproj.io
+          kind: Application
+          jsonPointers:
+            - /status
+            - /metadata/resourceVersion
+            - /metadata/generation
+            - /metadata/managedFields
+            - /spec/ignoreDifferences

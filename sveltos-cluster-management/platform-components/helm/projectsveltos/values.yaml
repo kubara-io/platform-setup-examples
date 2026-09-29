@@ -1,0 +1,15 @@
+projectsveltos:
+  agent:
+    managementCluster: false
+
+dashboardIngress:
+  enabled: false
+  host: ""
+  path: "/"
+  ingressClassName: ""
+  annotations: {}
+  tls:
+    enabled: true
+    secretName: ""
+
+clusterProfiles: {}

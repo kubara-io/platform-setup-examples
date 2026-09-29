@@ -1,0 +1,188 @@
+version: v1alpha3
+clusters:
+  - name: hub-cluster
+    stage: dev
+    type: hub
+    dnsName: hub-cluster-dev.example.com
+    ssoOrg: my-org
+    ssoTeam: platform-team
+    ingressClassName: traefik
+    argocd:
+      repo:
+        https:
+          configs:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+          components:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+    services:
+      argocd:
+        status: enabled
+      cert-manager:
+        status: enabled
+        config:
+          clusterIssuer:
+            email: platform-admin@example.com
+            name: letsencrypt-prod
+            server: https://acme-v02.api.letsencrypt.org/directory
+      external-dns:
+        status: enabled
+      external-secrets:
+        status: enabled
+      homer-dashboard:
+        status: enabled
+      kro:
+        status: disabled
+      kube-prometheus-stack:
+        status: enabled
+      kyverno:
+        status: enabled
+      kyverno-policies:
+        status: enabled
+      kyverno-policy-reporter:
+        status: enabled
+      loki:
+        status: enabled
+      longhorn:
+        status: disabled
+      metallb:
+        status: disabled
+      metrics-server:
+        status: disabled
+      oauth2-proxy:
+        status: enabled
+      projectsveltos:
+        status: enabled
+      reloader:
+        status: disabled
+      traefik:
+        status: enabled
+      vcluster:
+        status: enabled
+      vcluster-platform:
+        status: enabled
+      velero:
+        status: disabled
+        config:
+          backupMode: fs-backup
+          backupStorage:
+            create: true
+            region: eu01
+  - name: vcluster-1
+    stage: dev
+    type: spoke
+    dnsName: vcluster-1.hub-cluster-dev.example.com
+    ssoOrg: my-org
+    ssoTeam: platform-team
+    ingressClassName: traefik
+    argocd:
+      repo:
+        https:
+          configs:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+          components:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+    services:
+      cert-manager:
+        status: disabled
+        config:
+          clusterIssuer:
+            email: yourname@your-domain.de
+            name: letsencrypt-staging
+            server: https://acme-staging-v02.api.letsencrypt.org/directory
+      external-dns:
+        status: disabled
+      external-secrets:
+        status: disabled
+      kro:
+        status: enabled
+      kube-prometheus-stack:
+        status: disabled
+      kyverno:
+        status: disabled
+      kyverno-policies:
+        status: disabled
+      kyverno-policy-reporter:
+        status: disabled
+      loki:
+        status: disabled
+      longhorn:
+        status: disabled
+      metallb:
+        status: disabled
+      metrics-server:
+        status: disabled
+      oauth2-proxy:
+        status: disabled
+      reloader:
+        status: disabled
+      traefik:
+        status: disabled
+      velero:
+        status: disabled
+        config:
+          backupMode: fs-backup
+          backupStorage:
+            create: true
+            region: eu01
+  - name: vcluster-2
+    stage: staging
+    type: spoke
+    dnsName: vcluster-2.hub-cluster-dev.example.com
+    ssoOrg: my-org
+    ssoTeam: platform-team
+    argocd:
+      repo:
+        https:
+          configs:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+          components:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+    services:
+      cert-manager:
+        status: disabled
+        config:
+          clusterIssuer:
+            email: yourname@your-domain.de
+            name: letsencrypt-staging
+            server: https://acme-staging-v02.api.letsencrypt.org/directory
+      external-dns:
+        status: disabled
+      external-secrets:
+        status: disabled
+      kro:
+        status: enabled
+      kube-prometheus-stack:
+        status: disabled
+      kyverno:
+        status: disabled
+      kyverno-policies:
+        status: disabled
+      kyverno-policy-reporter:
+        status: disabled
+      loki:
+        status: disabled
+      longhorn:
+        status: disabled
+      metallb:
+        status: disabled
+      metrics-server:
+        status: disabled
+      oauth2-proxy:
+        status: disabled
+      reloader:
+        status: disabled
+      traefik:
+        status: disabled
+      velero:
+        status: disabled
+        config:
+          backupMode: fs-backup
+          backupStorage:
+            create: true
+            region: eu01

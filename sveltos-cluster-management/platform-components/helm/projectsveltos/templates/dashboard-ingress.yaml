@@ -1,0 +1,33 @@
+{{- if .Values.dashboardIngress.enabled -}}
+{{- $dashboardValues := index .Values "sveltos-dashboard" -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard
+  namespace: {{ .Release.Namespace }}
+  {{- with .Values.dashboardIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.dashboardIngress.ingressClassName }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.dashboardIngress.host }}
+      http:
+        paths:
+          - path: {{ .Values.dashboardIngress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: {{ (index $dashboardValues.dashboard.ports 0).port }}
+  {{- if .Values.dashboardIngress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.dashboardIngress.host }}
+      secretName: {{ .Values.dashboardIngress.tls.secretName | default (printf "%s-dashboard-tls" .Release.Name) }}
+  {{- end }}
+{{- end }}

@@ -12,6 +12,7 @@ kubara manages Kubernetes platform foundations through GitOps, catalog compositi
 | Example | Type | Featured tools & components | Demo goal |
 |---|---|---|---|
 | [`argo-cd-agents`](./argo-cd-agents/) | Runnable Lab | Argo CD Agent, vCluster, kind, cert-manager, External Secrets | Managed-mode hub-and-spoke setup with isolated application controllers on spoke clusters reporting status back to the hub. |
+| [`sveltos-cluster-management`](./sveltos-cluster-management/) | Architecture Pattern | Project Sveltos, kro, vCluster, custom catalog | Scalable multi-cluster fleet management using Project Sveltos instead of central Argo CD for cluster add-ons and configurations. |
 
 ## Example types
 

@@ -1,0 +1,12 @@
+---
+apiVersion: kubara.io/v1alpha1
+kind: ServiceDefinition
+metadata:
+  name: vcluster
+  annotations:
+    kubara.io/category: multi-tenancy
+spec:
+  chartPath: vcluster
+  status: disabled
+  clusterTypes:
+    - hub

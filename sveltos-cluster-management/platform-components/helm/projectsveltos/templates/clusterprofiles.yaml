@@ -1,0 +1,23 @@
+{{- range $key, $profile := .Values.clusterProfiles }}
+apiVersion: config.projectsveltos.io/v1beta1
+kind: ClusterProfile
+metadata:
+  name: {{ $profile.name | default $key }}
+  {{- with $profile.labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $profile.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $profile.spec }}
+  {{- toYaml $profile.spec | nindent 2 }}
+  {{- else }}
+  clusterSelector:
+    matchLabels: {}
+  syncMode: Continuous
+  {{- end }}
+---
+{{- end }}

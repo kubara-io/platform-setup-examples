@@ -1,0 +1,46 @@
+namespace:
+  labels:
+    project-name: "controlplane"
+    stage: "dev"
+vcluster-platform:
+  admin:
+    create: true
+    username: vClusterWizard
+    password: "3fb693f4-8d20-49e7-8cd8-585b162e6c0e"
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: true
+    name: vcluster-platform-ingress
+    host: vcluster-platform.controlplane-dev.stackit.run
+    ingressClass: traefik
+    path: /
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      enabled: true
+      secret: vcluster-platform-tls
+
+  config:
+    audit:
+      enabled: true
+    loftHost: vcluster-platform.controlplane-dev.stackit.run
+
+  env:
+    DISABLE_LOFT_ROUTER: "true"
+    NO_PROXY: localhost,127.0.0.1,.svc,.svc.cluster.local,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+    no_proxy: localhost,127.0.0.1,.svc,.svc.cluster.local,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+
+  serviceAccount:
+    imagePullSecrets:
+      - name: image-pull-secret
+
+  resources:
+    requests:
+      cpu: 750m
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi

@@ -1,0 +1,580 @@
+projectsveltos:
+  global:
+    imagePullSecrets:
+      - name: image-pull-secret
+  prometheus:
+    enabled: false
+  agent:
+    managementCluster: true
+  accessManager:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  addonController:
+    initialization:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    controller:
+      extraArgs:
+        worker-number: "40"
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: 500m
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+    driftDetectionManagerPatchConfigMap:
+      data:
+        deployment-patch: |-
+          patch: |-
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: drift-detection-manager
+            spec:
+              template:
+                spec:
+                  nodeSelector:
+                    role: sveltos
+                  tolerations:
+                    - key: role
+                      operator: Equal
+                      value: sveltos
+                      effect: NoSchedule
+    applierManagerPatchConfigMap:
+      data:
+        deployment-patch: |-
+          patch: |-
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: applier-manager
+            spec:
+              template:
+                spec:
+                  nodeSelector:
+                    role: app
+                  tolerations:
+                    - key: role
+                      operator: Equal
+                      value: app
+                      effect: NoSchedule
+  classifierManager:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+    agentPatchConfigMap:
+      data:
+        deployment-patch: |-
+          patch: |-
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: sveltos-agent-manager
+              namespace: projectsveltos
+            spec:
+              template:
+                spec:
+                  imagePullSecrets:
+                    - name: image-pull-secret
+                  nodeSelector:
+                    role: app
+                  tolerations:
+                    - key: role
+                      operator: Equal
+                      value: app
+                      effect: NoSchedule
+                  containers:
+                    - name: manager
+                      resources:
+                        requests:
+                          cpu: 256m
+                          memory: 512Mi
+                        limits:
+                          cpu: 500m
+                          memory: 2048Mi
+
+  eventManager:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  hcManager:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  crdManagerJob:
+    crdManager:
+      resources:
+        requests:
+          memory: 256Mi
+      nodeSelector:
+        role: "sveltos"
+      tolerations:
+        - key: "role"
+          operator: "Equal"
+          value: "sveltos"
+          effect: "NoSchedule"
+  registerMgmtClusterJob:
+    registerMgmtCluster:
+      resources:
+        requests:
+          memory: 256Mi
+      nodeSelector:
+        role: "sveltos"
+      tolerations:
+        - key: "role"
+          operator: "Equal"
+          value: "sveltos"
+          effect: "NoSchedule"
+  scManager:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  shardController:
+    manager:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  techsupportController:
+    controller:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2048Mi
+        requests:
+          cpu: 20m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  mcpServer:
+    controller:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2048Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+
+sveltos-dashboard:
+  dashboard:
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+  uiBackendManager:
+    nodeSelector:
+      role: "sveltos"
+    tolerations:
+      - key: "role"
+        operator: "Equal"
+        value: "sveltos"
+        effect: "NoSchedule"
+
+dashboardIngress:
+  enabled: true
+  host: sveltos.controlplane-dev.stackit.run
+  path: "/"
+  ingressClassName: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: projectsveltos-dashboard-subdomain-tls
+
+clusterProfiles:
+  kro:
+    name: kro
+    spec:
+      syncMode: Continuous
+      clusterSelector:
+        matchLabels:
+          kro: enabled
+      helmCharts:
+        - repositoryURL: oci://registry.k8s.io/kro/charts
+          repositoryName: kro
+          chartName: kro
+          chartVersion: 0.9.1
+          releaseName: kro
+          releaseNamespace: kro-system
+          helmChartAction: Install
+          values: |
+            deployment:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+
+  cert-manager:
+    name: cert-manager
+    spec:
+      syncMode: Continuous
+      clusterSelector:
+        matchLabels:
+          cert-manager: enabled
+      helmCharts:
+        - repositoryURL: https://charts.jetstack.io
+          repositoryName: jetstack
+          chartName: jetstack/cert-manager
+          chartVersion: v1.20.2
+          releaseName: cert-manager
+          releaseNamespace: cert-manager
+          helmChartAction: Install
+          values: |
+            tolerations:
+              - key: "role"
+                operator: "Equal"
+                value: "app"
+                effect: "NoSchedule"
+            nodeSelector:
+              role: "app"
+            prometheus:
+              servicemonitor:
+                enabled: false
+                labels:
+                  monitoring.instance: change
+            crds:
+              enabled: true
+            serviceAccount:
+              automountServiceAccountToken: true
+            startupapicheck:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            cainjector:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            webhook:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+
+  kyverno:
+    name: kyverno
+    spec:
+      syncMode: Continuous
+      clusterSelector:
+        matchLabels:
+          kyverno: enabled
+      helmCharts:
+        - repositoryURL: https://kyverno.github.io/kyverno
+          repositoryName: kyverno
+          chartName: kyverno/kyverno
+          chartVersion: 3.7.1
+          releaseName: kyverno
+          releaseNamespace: kyverno
+          helmChartAction: Install
+          values: |
+            admissionController:
+              serviceMonitor:
+                enabled: false
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            backgroundController:
+              serviceMonitor:
+                enabled: false
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            cleanupController:
+              serviceMonitor:
+                enabled: false
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            reportsController:
+              serviceMonitor:
+                enabled: false
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+
+  external-secrets:
+    name: external-secrets
+    spec:
+      syncMode: Continuous
+      clusterSelector:
+        matchLabels:
+          external-secrets: enabled
+      helmCharts:
+        - repositoryURL: https://charts.external-secrets.io/
+          repositoryName: external-secrets
+          chartName: external-secrets/external-secrets
+          chartVersion: 2.3.0
+          releaseName: external-secrets
+          releaseNamespace: external-secrets
+          helmChartAction: Install
+          values: |
+            replicaCount: 1
+            serviceMonitor:
+              enabled: false
+            resources:
+              requests:
+                cpu: 20m
+                memory: 200Mi
+              limits:
+                memory: 200Mi
+            tolerations:
+              - key: "role"
+                operator: "Equal"
+                value: "app"
+                effect: "NoSchedule"
+            nodeSelector:
+              role: "app"
+            certController:
+              replicaCount: 1
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 200Mi
+                limits:
+                  memory: 200Mi
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            webhook:
+              replicaCount: 1
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 200Mi
+                limits:
+                  memory: 200Mi
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            bitwarden-sdk-server:
+              enabled: false
+
+  kube-prometheus-stack:
+    name: kube-prometheus-stack
+    spec:
+      syncMode: Continuous
+      clusterSelector:
+        matchLabels:
+          kube-prometheus-stack: enabled
+      helmCharts:
+        - repositoryURL: https://prometheus-community.github.io/helm-charts
+          repositoryName: prometheus-community
+          chartName: prometheus-community/kube-prometheus-stack
+          chartVersion: 82.18.0
+          releaseName: kube-prometheus-stack
+          releaseNamespace: monitoring
+          helmChartAction: Install
+          values: |
+            nodeExporter:
+              enabled: false
+            kubeStateMetrics:
+              enabled: false
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            grafana:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+            crds:
+              upgradeJob:
+                tolerations:
+                  - key: "role"
+                    operator: "Equal"
+                    value: "app"
+                    effect: "NoSchedule"
+            prometheus:
+              prometheusSpec:
+                tolerations:
+                  - key: "role"
+                    operator: "Equal"
+                    value: "app"
+                    effect: "NoSchedule"
+                nodeSelector:
+                  role: "app"
+            alertmanager:
+              alertmanagerSpec:
+                tolerations:
+                  - key: "role"
+                    operator: "Equal"
+                    value: "app"
+                    effect: "NoSchedule"
+                nodeSelector:
+                  role: "app"
+            prometheusOperator:
+              tolerations:
+                - key: "role"
+                  operator: "Equal"
+                  value: "app"
+                  effect: "NoSchedule"
+              nodeSelector:
+                role: "app"
+              admissionWebhooks:
+                patch:
+                  tolerations:
+                    - key: "role"
+                      operator: "Equal"
+                      value: "app"
+                      effect: "NoSchedule"
+                  nodeSelector:
+                    role: "app"
+            defaultRules:
+              disabled:
+                KubeCPUOvercommit: true
+        - repositoryURL: https://prometheus-community.github.io/helm-charts
+          repositoryName: prometheus-community
+          chartName: prometheus-community/prometheus-blackbox-exporter
+          chartVersion: 11.9.1
+          releaseName: prometheus-blackbox-exporter
+          releaseNamespace: monitoring
+          helmChartAction: Install
+          values: |
+            tolerations:
+              - key: "role"
+                operator: "Equal"
+                value: "app"
+                effect: "NoSchedule"
+            nodeSelector:
+              role: "app"

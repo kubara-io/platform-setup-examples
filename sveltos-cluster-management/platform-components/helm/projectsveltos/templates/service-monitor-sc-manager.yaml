@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/instance: projectsveltos
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: projectsveltos
+    app.kubernetes.io/version: 1.8.0
+    helm.sh/chart: projectsveltos-1.8.2
+    release: prometheus-operator
+    monitoring.instance: controlplane-dev
+  name: sc-manager
+  namespace: projectsveltos
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    path: /metrics
+    port: metrics
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  namespaceSelector:
+    matchNames:
+    - projectsveltos
+  selector:
+    matchLabels:
+      control-plane: sc-manager

@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vcluster-2
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: vcluster-2
+    server: "https://kubernetes.default.svc"
+  project: hub-cluster-dev
+  sources:
+    - repoURL: https://github.com/my-org/platform-repo.git
+      targetRevision: main
+      path: platform-components/helm/vcluster
+      helm:
+        ignoreMissingValueFiles: true
+        releaseName: "vcluster-2"
+        valueFiles:
+          - values.yaml
+        values: |
+          vcluster:
+            controlPlane:
+              proxy:
+                extraSANs:
+                  - vcluster-2.hub-cluster-dev.example.com
+              ingress:
+                enabled: false
+
+          ingressRouteTCP:
+            enabled: true
+            host: vcluster-2.hub-cluster-dev.example.com
+            annotations:
+              external-dns.alpha.kubernetes.io/target: hub-cluster-dev.example.com
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: vcluster-2
+      namespace: vcluster-2
+      jsonPointers:
+        - /spec/updateStrategy
+        - /spec/volumeClaimTemplates
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=false
+      - PruneLast=true
+      - FailOnSharedResource=true
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
