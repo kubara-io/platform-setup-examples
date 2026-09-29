@@ -1,0 +1,28 @@
+version: v1alpha4
+clusters:
+  - name: hub-cluster
+    stage: dev
+    type: hub
+    dnsName: hub-cluster-dev.example.com
+    ssoOrg: my-org
+    ssoTeam: platform-team
+    ingressClassName: traefik
+    argocd:
+      selfManaged: enabled
+      repo:
+        https:
+          configs:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+          components:
+            url: https://github.com/my-org/platform-repo.git
+            targetRevision: main
+    catalogs:
+      - oci://ghcr.io/kubara-io/catalogs/general:3.0.0
+    services:
+      cert-manager:
+        status: enabled
+      external-secrets:
+        status: enabled
+      traefik:
+        status: enabled

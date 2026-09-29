@@ -1,0 +1,14 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend-web
+  namespace: online-boutique
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`boutique.hub-cluster-dev.example.com`)
+      kind: Rule
+      services:
+        - name: frontend
+          port: 80

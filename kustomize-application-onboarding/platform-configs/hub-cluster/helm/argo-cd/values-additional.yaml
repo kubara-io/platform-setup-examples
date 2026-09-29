@@ -1,0 +1,15 @@
+bootstrapValues:
+  applications:
+    - name: app-of-apps
+      namespace: argocd
+      projectName: hub-cluster-dev
+      destination:
+        server: https://kubernetes.default.svc
+      repoUrl: https://github.com/my-org/platform-repo.git
+      targetRevision: main
+      repoPath: platform-configs/hub-cluster/apps
+      directory:
+        recurse: true
+      info:
+        - name: type
+          value: app-of-apps
