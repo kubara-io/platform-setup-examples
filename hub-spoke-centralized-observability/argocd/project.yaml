@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability-poc
+  namespace: argocd
+spec:
+  description: Isolated project for the centralized observability PoC
+  sourceRepos:
+    - https://github.com/kubara-io/platform-setup-examples.git
+    - https://grafana.github.io/helm-charts
+    - https://prometheus-community.github.io/helm-charts
+  destinations:
+    - namespace: observability
+      server: "*"
+    - namespace: kube-prometheus-stack
+      server: '*'
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding

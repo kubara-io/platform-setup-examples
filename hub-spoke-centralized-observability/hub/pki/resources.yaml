@@ -1,0 +1,71 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: telemetry-selfsigned
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  selfSigned: {}
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: telemetry-ca
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: telemetry-ca
+  commonName: kubara-telemetry-ca
+  isCA: true
+  duration: 8760h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - digital signature
+    - cert sign
+    - crl sign
+  issuerRef:
+    name: telemetry-selfsigned
+    kind: Issuer
+
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: telemetry-ca
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  ca:
+    secretName: telemetry-ca
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSOption
+metadata:
+  name: telemetry-mtls
+  namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  minVersion: VersionTLS12
+  sniStrict: true
+  clientAuth:
+    secretNames:
+      - telemetry-ca
+    clientAuthType: RequireAndVerifyClientCert

@@ -1,0 +1,199 @@
+---
+crds:
+  create: false
+controller:
+  type: deployment
+  extraAnnotations:
+    secret.reloader.stakater.com/reload: "telemetry-client"
+  volumes:
+    extra:
+      - name: telemetry-tls
+        secret:
+          secretName: telemetry-client
+  replicas: 1
+alloy:
+  mounts:
+    extra:
+      - name: telemetry-tls
+        mountPath: /etc/alloy/tls
+        readOnly: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  configMap:
+    content: |-
+      prometheus.exporter.self "alloy" {}
+
+      prometheus.scrape "alloy" {
+        targets    = prometheus.exporter.self.alloy.targets
+        forward_to = [prometheus.remote_write.hub.receiver]
+      }
+
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "kube_state_metrics" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "observability"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "kube-state-metrics"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "http"
+          action        = "keep"
+        }
+
+        rule {
+          target_label = "job"
+          replacement  = "kube-state-metrics"
+        }
+      }
+
+      prometheus.scrape "kube_state_metrics" {
+        targets         = discovery.relabel.kube_state_metrics.output
+        forward_to      = [prometheus.remote_write.hub.receiver]
+        scrape_interval = "30s"
+      }
+
+      discovery.relabel "node_exporter" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "observability"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "prometheus-node-exporter"
+          action        = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_port_name"]
+          regex         = "metrics"
+          action        = "keep"
+        }
+
+        rule {
+          target_label = "job"
+          replacement  = "node-exporter"
+        }
+      }
+
+      prometheus.scrape "node_exporter" {
+        targets         = discovery.relabel.node_exporter.output
+        forward_to      = [prometheus.remote_write.hub.receiver]
+        scrape_interval = "30s"
+      }
+
+      prometheus.remote_write "hub" {
+        external_labels = {
+          cluster      = "spoke-1",
+          cluster_type = "spoke",
+          stage        = "local",
+        }
+
+        endpoint {
+          url = "https://thanos.observability.example.com:32531/api/v1/receive"
+
+          tls_config {
+            ca_file     = "/etc/alloy/tls/ca.crt"
+            cert_file   = "/etc/alloy/tls/tls.crt"
+            key_file    = "/etc/alloy/tls/tls.key"
+            min_version = "TLS12"
+          }
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          action        = "replace"
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          action        = "replace"
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          action        = "replace"
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          action        = "replace"
+          target_label  = "node"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          action        = "replace"
+          target_label  = "app"
+        }
+
+        rule {
+          source_labels = [
+            "__meta_kubernetes_namespace",
+            "__meta_kubernetes_pod_container_name",
+          ]
+          action       = "replace"
+          target_label = "job"
+          separator    = "/"
+          replacement  = "$1"
+        }
+      }
+
+      loki.source.kubernetes "pod_logs" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+        stage.static_labels {
+          values = {
+            cluster      = "spoke-1",
+            cluster_type = "spoke",
+            stage        = "local",
+          }
+        }
+
+        forward_to = [loki.write.hub.receiver]
+      }
+
+      loki.write "hub" {
+        endpoint {
+          url = "https://loki.observability.example.com:32531/loki/api/v1/push"
+
+          tls_config {
+            ca_file     = "/etc/alloy/tls/ca.crt"
+            cert_file   = "/etc/alloy/tls/tls.crt"
+            key_file    = "/etc/alloy/tls/tls.key"
+            min_version = "TLS12"
+          }
+        }
+      }
+serviceMonitor:
+  enabled: false

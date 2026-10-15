@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-poc-grafana-datasources
+  namespace: kube-prometheus-stack
+  labels:
+    grafana_datasource: "1"
+data:
+  observability-poc.yaml: |-
+    apiVersion: 1
+
+    datasources:
+      - name: Thanos
+        uid: kubara-thanos
+        type: prometheus
+        access: proxy
+        url: http://thanos-query.observability.svc.cluster.local:9090
+        isDefault: false
+        editable: true
+
+      - name: Loki
+        uid: kubara-loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc.cluster.local:3100
+        isDefault: false
+        editable: true

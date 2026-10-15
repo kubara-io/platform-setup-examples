@@ -1,0 +1,32 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-poc-spoke-1-alloy
+  namespace: argocd
+spec:
+  project: observability-poc
+
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 1.12.1
+      helm:
+        releaseName: spoke-1-alloy
+        valueFiles:
+          - $values/hub-spoke-centralized-observability/spoke/alloy/values.yaml
+
+    - repoURL: https://github.com/kubara-io/platform-setup-examples.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    name: spoke-1
+    namespace: observability
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
