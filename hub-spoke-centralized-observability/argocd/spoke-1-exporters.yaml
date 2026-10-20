@@ -1,0 +1,40 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-poc-spoke-1-exporters
+  namespace: argocd
+spec:
+  project: observability-poc
+
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-state-metrics
+      targetRevision: 8.4.1
+      helm:
+        releaseName: spoke-1-kube-state-metrics
+        valueFiles:
+          - $values/hub-spoke-centralized-observability/spoke/exporters/kube-state-metrics-values.yaml
+
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: prometheus-node-exporter
+      targetRevision: 4.56.3
+      helm:
+        releaseName: spoke-1-node-exporter
+        valueFiles:
+          - $values/hub-spoke-centralized-observability/spoke/exporters/node-exporter-values.yaml
+
+    - repoURL: https://github.com/kubara-io/platform-setup-examples.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    name: spoke-1
+    namespace: observability
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

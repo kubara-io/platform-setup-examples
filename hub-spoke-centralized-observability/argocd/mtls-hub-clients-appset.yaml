@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: observability-poc-mtls-hub-clients
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+
+  generators:
+    - git:
+        repoURL: https://github.com/kubara-io/platform-setup-examples.git
+        revision: main
+        files:
+          - path: hub-spoke-centralized-observability/spokes/*.yaml
+
+  template:
+    metadata:
+      name: 'observability-poc-mtls-hub-{{ .name }}'
+
+    spec:
+      project: observability-poc
+
+      source:
+        repoURL: https://github.com/kubara-io/platform-setup-examples.git
+        targetRevision: main
+        path: hub-spoke-centralized-observability/charts/mtls-hub-client
+
+        helm:
+          parameters:
+            - name: spokeName
+              value: '{{ .name }}'
+
+      destination:
+        name: hub-cluster
+        namespace: observability
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

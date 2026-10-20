@@ -1,0 +1,88 @@
+---
+fullnameOverride: loki
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+
+  storage:
+    type: filesystem
+
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+singleBinary:
+  replicas: 1
+
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# Traefik is our only external gateway.
+gateway:
+  enabled: false
+
+# Use Loki chart's native Ingress. In SingleBinary mode it routes
+# the Loki API paths directly to the single-binary service.
+ingress:
+  enabled: true
+  ingressClassName: traefik
+
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: observability-telemetry-mtls@kubernetescrd
+
+  hosts:
+    - loki.observability.example.com
+
+  tls:
+    - secretName: telemetry-server-tls
+      hosts:
+        - loki.observability.example.com
+
+# Disable components that add no value to this single-node PoC.
+backend:
+  replicas: 0
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false
+
+lokiCanary:
+  enabled: false
+
+test:
+  enabled: false
+
+minio:
+  enabled: false
+
+monitoring:
+  serviceMonitor:
+    enabled: false

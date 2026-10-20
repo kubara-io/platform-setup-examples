@@ -1,0 +1,25 @@
+{{- if .Values.certificate.create }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: telemetry-client-{{ required "spokeName is required" .Values.spokeName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  secretName: telemetry-client-{{ .Values.spokeName }}
+  commonName: {{ .Values.spokeName | quote }}
+
+  duration: {{ .Values.certificate.duration }}
+  renewBefore: {{ .Values.certificate.renewBefore }}
+
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+
+  usages:
+    - client auth
+
+  issuerRef:
+    name: {{ .Values.issuer.name }}
+    kind: {{ .Values.issuer.kind }}
+{{- end }}

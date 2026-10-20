@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mtls-hub-client
+description: Hub-side mTLS client certificate generation and secret delivery
+type: application
+version: 0.1.0

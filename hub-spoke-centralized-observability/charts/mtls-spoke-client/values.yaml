@@ -1,0 +1,11 @@
+spokeName: ""
+
+namespace: observability
+
+secretStore:
+  name: observability-mtls-reader
+  kind: SecretStore
+
+remoteKeyPrefix: observability/mtls/clients
+
+targetSecretName: telemetry-client

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mtls-spoke-client
+description: Spoke-side mTLS client certificate delivery
+type: application
+version: 0.1.0

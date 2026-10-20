@@ -1,0 +1,176 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: thanos-receive-data
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-receive
+  namespace: observability
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: thanos-receive
+  template:
+    metadata:
+      labels:
+        app: thanos-receive
+    spec:
+      containers:
+        - name: thanos
+          image: quay.io/thanos/thanos:v0.42.4
+          args:
+            - receive
+            - --http-address=0.0.0.0:10902
+            - --grpc-address=0.0.0.0:10901
+            - --remote-write.address=0.0.0.0:19291
+            - --tsdb.path=/var/thanos/receive
+            - --tsdb.retention=7d
+            - --receive.replication-factor=1
+            - '--label=receive_replica="0"'
+            - '--label=receive_cluster="hub-cluster"'
+          ports:
+            - name: remote-write
+              containerPort: 19291
+            - name: grpc
+              containerPort: 10901
+            - name: http
+              containerPort: 10902
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/thanos/receive
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: thanos-receive-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-receive
+  namespace: observability
+spec:
+  selector:
+    app: thanos-receive
+  ports:
+    - name: remote-write
+      port: 19291
+      targetPort: remote-write
+    - name: grpc
+      port: 10901
+      targetPort: grpc
+    - name: http
+      port: 10902
+      targetPort: http
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thanos-receive
+  namespace: observability
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: observability-telemetry-mtls@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: thanos.observability.example.com
+      http:
+        paths:
+          - path: /api/v1/receive
+            pathType: Prefix
+            backend:
+              service:
+                name: thanos-receive
+                port:
+                  number: 19291
+  tls:
+    - secretName: telemetry-server-tls
+      hosts:
+        - thanos.observability.example.com
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-query
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thanos-query
+  template:
+    metadata:
+      labels:
+        app: thanos-query
+    spec:
+      containers:
+        - name: thanos
+          image: quay.io/thanos/thanos:v0.42.4
+          args:
+            - query
+            - --http-address=0.0.0.0:9090
+            - --endpoint=thanos-receive:10901
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-query
+  namespace: observability
+spec:
+  selector:
+    app: thanos-query
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http

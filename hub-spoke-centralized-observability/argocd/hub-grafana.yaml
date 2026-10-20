@@ -1,0 +1,22 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-poc-hub-grafana
+  namespace: argocd
+spec:
+  project: observability-poc
+
+  source:
+    repoURL: https://github.com/kubara-io/platform-setup-examples.git
+    targetRevision: main
+    path: hub-spoke-centralized-observability/hub/grafana
+
+  destination:
+    name: hub-cluster
+    namespace: kube-prometheus-stack
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

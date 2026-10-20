@@ -1,0 +1,19 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-poc-hub-thanos
+  namespace: argocd
+spec:
+  project: observability-poc
+  source:
+    repoURL: https://github.com/kubara-io/platform-setup-examples.git
+    targetRevision: main
+    path: hub-spoke-centralized-observability/hub/thanos
+  destination:
+    name: hub-cluster
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

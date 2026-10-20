@@ -1,0 +1,18 @@
+spokeName: ""
+
+namespace: observability
+
+issuer:
+  name: telemetry-ca
+  kind: Issuer
+
+certificate:
+  create: true
+  duration: 168h
+  renewBefore: 24h
+
+secretStore:
+  name: observability-mtls-writer
+  kind: SecretStore
+
+remoteKeyPrefix: observability/mtls/clients
