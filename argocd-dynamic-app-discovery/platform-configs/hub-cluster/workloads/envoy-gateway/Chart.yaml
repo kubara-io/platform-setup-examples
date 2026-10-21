@@ -1,0 +1,9 @@
+apiVersion: v2
+name: envoy-gateway
+description: Envoy Gateway with a cert-manager-managed HTTPS Gateway
+type: application
+version: 0.1.0
+dependencies:
+  - name: gateway-helm
+    repository: oci://docker.io/envoyproxy
+    version: 1.9.2

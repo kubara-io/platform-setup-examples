@@ -1,0 +1,29 @@
+version: v1alpha4
+clusters:
+  - name: hub-cluster
+    stage: dev
+    type: hub
+    dnsName: hub-cluster-dev.example.com
+    ssoOrg: your-org
+    ssoTeam: platform-team
+    ingressClassName: traefik
+    argocd:
+      selfManaged: enabled
+      repo:
+        https:
+          configs:
+            url: https://github.com/your-org/your-platform-repo.git
+            targetRevision: main
+          components:
+            url: https://github.com/your-org/your-platform-repo.git
+            targetRevision: main
+    catalogs:
+      - oci://ghcr.io/kubara-io/catalogs/general:3.0.0
+    services:
+      cert-manager:
+        status: enabled
+        config:
+          clusterIssuer:
+            name: letsencrypt-staging
+            email: platform@example.com
+            server: https://acme-staging-v02.api.letsencrypt.org/directory

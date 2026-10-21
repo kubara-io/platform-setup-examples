@@ -1,0 +1,13 @@
+bootstrapValues:
+  applications:
+    - name: workload-discovery
+      namespace: argocd
+      projectName: hub-cluster-dev
+      destination:
+        server: https://kubernetes.default.svc
+      repoUrl: https://github.com/your-org/your-platform-repo.git
+      targetRevision: main
+      repoPath: platform-configs/hub-cluster/app-of-apps
+      info:
+        - name: type
+          value: ApplicationSet workload discovery

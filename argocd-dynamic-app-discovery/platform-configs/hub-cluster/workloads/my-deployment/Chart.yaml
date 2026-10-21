@@ -1,0 +1,5 @@
+apiVersion: v2
+name: nginx
+description: nginx workload exposed through the Envoy Gateway HTTPS listener
+type: application
+version: 0.1.0
