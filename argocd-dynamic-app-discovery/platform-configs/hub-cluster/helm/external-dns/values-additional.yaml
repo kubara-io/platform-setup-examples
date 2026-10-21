@@ -1,0 +1,8 @@
+external-dns:
+  sources:
+    - ingress
+    - gateway-httproute
+    - gateway-grpcroute
+    - gateway-tlsroute
+  domainFilters:
+    - stackit.run

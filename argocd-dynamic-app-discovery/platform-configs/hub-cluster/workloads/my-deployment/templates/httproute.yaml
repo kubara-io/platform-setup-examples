@@ -4,16 +4,20 @@ metadata:
   name: {{ .Release.Name }}
 spec:
   parentRefs:
-    - name: {{ .Values.route.gateway.name }}
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Values.route.gateway.name }}
       namespace: {{ .Values.route.gateway.namespace }}
       sectionName: {{ .Values.route.gateway.sectionName }}
   hostnames:
     - {{ required "route.hostname is required" .Values.route.hostname | quote }}
-  rules:
+  rules
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: {{ .Release.Name }}
+        - group: ''
+          kind: Service
+          name: {{ .Release.Name }}
           port: {{ .Values.service.port }}

@@ -21,7 +21,9 @@ The two starting directories demonstrate the pattern:
 ```mermaid
 flowchart TD
     Kubara["kubara generate<br/>general catalog"] --> ArgoCD["Argo CD"]
-    Values["Argo CD overlay values"] --> Parent["Parent Application"]
+    Kubara --> ExtDNS["ExternalDNS"]
+    ArgoValues["Argo CD overlay values"] --> Parent["Parent Application"]
+    DNSValues["ExternalDNS overlay values"] --> ExtDNS
     Parent --> AppSet["ApplicationSet<br/>Git directory generator"]
 
     subgraph Git["Git repository"]
@@ -38,19 +40,21 @@ flowchart TD
     EnvoyApp --> Gateway["HTTPS Gateway + Certificate"]
     NginxApp --> Route["nginx Service + HTTPRoute"]
     Route --> Gateway
+    Route -.-> ExtDNS
+    ExtDNS --> DNS["DNS records"]
 ```
 
 ## Type and prerequisites
 
 - **Type**: `Architecture Pattern`
-- **Related kubara concepts**: general catalog, workload onboarding, Argo CD Applications, ApplicationSets, AppProjects, cert-manager
+- **Related kubara concepts**: general catalog, workload onboarding, Argo CD Applications, ApplicationSets, AppProjects, cert-manager, ExternalDNS
 
 Before adopting this pattern:
 
 1. Use a kubara release and general catalog compatible with the configuration shown here.
 2. Push the generated platform state to a Git repository that Argo CD can read.
 3. Replace every `https://github.com/your-org/your-platform-repo.git` occurrence with that repository URL.
-4. Configure the hostname and ClusterIssuer in the Envoy Gateway chart values. The supplied `nginx.example.com` and `letsencrypt-staging` values are examples; a public ACME issuer can issue a certificate only for a hostname you control.
+4. Configure the hostname and ClusterIssuer in the Envoy Gateway chart values. The supplied `nginx.example.com` and `letsencrypt-staging` values are examples; a public ACME issuer can issue a certificate only for a hostname you control. Update `domainFilters` in the ExternalDNS overlay to match your domain.
 5. Ensure the generated cluster AppProject permits the Git repository and the `envoy-gateway` and `nginx` destination namespaces.
 
 ## Structure
@@ -63,14 +67,18 @@ argocd-dynamic-app-discovery/
     └── hub-cluster/
         ├── app-of-apps/
         │   └── workload-discovery.yaml        # ApplicationSet manifest only
-        ├── helm/argo-cd/
-        │   └── values-additional.yaml         # Creates the parent Application
+        ├── helm/
+        │   ├── argo-cd/
+        │   │   └── values-additional.yaml     # Creates the parent Application
+        │   └── external-dns/
+        │       └── values-additional.yaml     # Configures Gateway API route sources
         └── workloads/
             ├── envoy-gateway/
             │   ├── Chart.yaml                 # Pinned OCI dependency
             │   ├── values.yaml                # TLS hostname and ClusterIssuer
             │   └── templates/
             │       ├── certificate.yaml
+            │       ├── gatewayclass.yaml
             │       └── gateway.yaml
             └── nginx/
                 ├── Chart.yaml
@@ -94,7 +102,10 @@ kubara generate
 kubara bootstrap hub-cluster
 ```
 
-The `values-additional.yaml` overlay adds a parent Application named `hub-cluster-dev-workload-discovery`. Its source is the dedicated `app-of-apps/` manifest directory, which contains only the ApplicationSet resource.
+Two Helm overlays customize the platform services:
+
+- `platform-configs/hub-cluster/helm/argo-cd/values-additional.yaml` adds a parent Application named `hub-cluster-dev-workload-discovery`. Its source is the dedicated `app-of-apps/` manifest directory, which contains only the ApplicationSet resource.
+- `platform-configs/hub-cluster/helm/external-dns/values-additional.yaml` configures ExternalDNS with Gateway API sources (`gateway-httproute`, `gateway-grpcroute`, `gateway-tlsroute`) and sets `domainFilters`. This allows ExternalDNS to discover hostnames from `HTTPRoute` resources automatically.
 
 ### 2. Discover chart directories
 
@@ -111,7 +122,7 @@ For every matching directory, the template creates an Application whose source p
 
 All discovered directories must be deployable Helm chart directories. If applications need different projects, repositories, revisions, or namespace rules, use a Git files generator with explicit per-application metadata instead.
 
-### 3. Configure HTTPS
+### 3. Configure HTTPS and DNS
 
 The Envoy Gateway chart creates:
 
@@ -130,6 +141,8 @@ tls:
 ```
 
 The nginx chart's `route.hostname` must match `tls.hostname`. Its HTTPRoute references the Gateway in the `envoy-gateway` namespace. The Gateway permits routes from all namespaces so the directory-derived `nginx` namespace can attach.
+
+ExternalDNS monitors the HTTPRoute and creates the corresponding DNS records pointing to the Gateway address. Adjust `domainFilters` in `platform-configs/hub-cluster/helm/external-dns/values-additional.yaml` to ensure your domain is included.
 
 ### 4. Add another workload
 
@@ -159,3 +172,4 @@ Use a catalog instead when Envoy Gateway and its routing policy are a repeated, 
 - [Argo CD: Git generator](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/)
 - [Envoy Gateway](https://gateway.envoyproxy.io/)
 - [Gateway API](https://gateway-api.sigs.k8s.io/)
+- [ExternalDNS: Gateway API](https://kubernetes-sigs.github.io/external-dns/latest/tutorials/gateway-api/)
