@@ -1,0 +1,16 @@
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: "1.27.5"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+
+route:
+  hostname: nginx.example.com
+  gateway:
+    name: envoy-gateway
+    namespace: envoy-gateway
+    sectionName: https

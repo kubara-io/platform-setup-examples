@@ -1,0 +1,10 @@
+gatewayClassName: eg
+
+tls:
+  hostname: nginx.example.com
+  secretName: envoy-gateway-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+
+envoyGateway: {}
