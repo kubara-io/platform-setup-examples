@@ -1,20 +1,20 @@
 # Dynamic Argo CD application discovery
 
-An Argo CD ApplicationSet pattern that discovers Helm chart directories from Git and deploys each directory as an independently reconciled Argo CD Application.
+An Argo CD App-of-Apps pattern that discovers Helm chart directories from Git and deploys each directory as an independently reconciled Argo CD Application.
 
 > [!WARNING]
 > This example is a reference pattern, not a production-hardened configuration. Review and adapt repository permissions, AppProject restrictions, network policies, DNS, certificate issuer settings, image versions, and security contexts before using it in a live environment.
 
 ## Purpose
 
-kubara catalogs package reusable platform architecture. A workload owned by one cluster or team does not need a custom catalog: kubara's generated Argo CD installation provides an intended workload-onboarding seam.
+kubara catalogs package reusable platform architecture. A workload owned by one cluster or team does not necessarily need the overhead of maintaining a custom catalog.
 
-This pattern makes that seam dynamic. The ApplicationSet has one interface: add a Helm chart directory under `platform-configs/hub-cluster/workloads/`. Argo CD discovers it and creates one Application in a namespace derived from the directory name. Removing that directory removes the generated Application and, through automated pruning, its managed resources.
+The pattern in this project makes helm deployments dynamic. The App-of-Apps ApplicationSet is based on the following idea: Add a Helm chart directory under `platform-configs/hub-cluster/workloads/`. Argo CD discovers it and creates one Application in a namespace derived from the directory name. Removing that directory removes the generated Application and, through automated pruning, its managed resources.
 
 The two starting directories demonstrate the pattern:
 
 - `envoy-gateway` wraps the pinned upstream Envoy Gateway chart, creates a cert-manager `Certificate`, and owns an HTTPS `Gateway`.
-- `nginx` deploys a small nginx workload and attaches its `HTTPRoute` to that Gateway.
+- `my-deployment` deploys a small nginx workload and attaches its `HTTPRoute` to that Gateway.
 
 ## Architecture
 
@@ -29,16 +29,16 @@ flowchart TD
     subgraph Git["Git repository"]
         Manifests["platform-configs/hub-cluster/app-of-apps/<br/>workload-discovery.yaml"]
         Envoy["workloads/envoy-gateway/<br/>Helm chart"]
-        Nginx["workloads/nginx/<br/>Helm chart"]
+        MyDeployment["workloads/my-deployment/<br/>Helm chart"]
     end
 
     Parent --> Manifests
     AppSet --> Envoy
-    AppSet --> Nginx
+    AppSet --> MyDeployment
     Envoy --> EnvoyApp["Application: envoy-gateway<br/>namespace: envoy-gateway"]
-    Nginx --> NginxApp["Application: nginx<br/>namespace: nginx"]
+    MyDeployment --> MyDeploymentApp["Application: my-deployment<br/>namespace: my-deployment"]
     EnvoyApp --> Gateway["HTTPS Gateway + Certificate"]
-    NginxApp --> Route["nginx Service + HTTPRoute"]
+    MyDeploymentApp --> Route["nginx Service + HTTPRoute"]
     Route --> Gateway
     Route -.-> ExtDNS
     ExtDNS --> DNS["DNS records"]
@@ -51,16 +51,15 @@ flowchart TD
 
 Before adopting this pattern:
 
-1. Use a kubara release and general catalog compatible with the configuration shown here.
-2. Push the generated platform state to a Git repository that Argo CD can read.
-3. Replace every `https://github.com/your-org/your-platform-repo.git` occurrence with that repository URL.
+1. Use the latest kubara release and general catalog to generate a basic setup
+2. Add the app-of-apps directory to your cluster
+3. Replace every `https://github.com/your-org/your-platform-repo.git` occurrence with your GitOps Repo Url and replace the cluster name and cluster project
 4. Configure the hostname and ClusterIssuer in the Envoy Gateway chart values. The supplied `nginx.example.com` and `letsencrypt-staging` values are examples; a public ACME issuer can issue a certificate only for a hostname you control. Update `domainFilters` in the ExternalDNS overlay to match your domain.
-5. Ensure the generated cluster AppProject permits the Git repository and the `envoy-gateway` and `nginx` destination namespaces.
 
 ## Structure
 
 ```text
-argocd-dynamic-app-discovery/
+argo-dynamic-app-discovery/
 ├── README.md
 ├── config.yaml
 └── platform-configs/
@@ -80,7 +79,7 @@ argocd-dynamic-app-discovery/
             │       ├── certificate.yaml
             │       ├── gatewayclass.yaml
             │       └── gateway.yaml
-            └── nginx/
+            └── my-deployment/
                 ├── Chart.yaml
                 ├── values.yaml
                 └── templates/
@@ -88,8 +87,6 @@ argocd-dynamic-app-discovery/
                     ├── service.yaml
                     └── httproute.yaml
 ```
-
-The parent Application reads only `platform-configs/hub-cluster/app-of-apps/`. Keep the chart directories outside that path: an Argo CD directory source treats YAML below its path as Kubernetes manifests and must not attempt to apply Helm `Chart.yaml` or `values.yaml`.
 
 ## Pattern walkthrough
 
@@ -140,13 +137,13 @@ tls:
     kind: ClusterIssuer
 ```
 
-The nginx chart's `route.hostname` must match `tls.hostname`. Its HTTPRoute references the Gateway in the `envoy-gateway` namespace. The Gateway permits routes from all namespaces so the directory-derived `nginx` namespace can attach.
+The my-deployment chart's `route.hostname` must match `tls.hostname`. Its HTTPRoute references the Gateway in the `envoy-gateway` namespace. The Gateway permits routes from all namespaces so the directory-derived `my-deployment` namespace can attach.
 
 ExternalDNS monitors the HTTPRoute and creates the corresponding DNS records pointing to the Gateway address. Adjust `domainFilters` in `platform-configs/hub-cluster/helm/external-dns/values-additional.yaml` to ensure your domain is included.
 
 ### 4. Add another workload
 
-To onboard another workload, add a Helm chart directory beside `envoy-gateway` and `nginx`:
+To onboard another workload, add a Helm chart directory beside `envoy-gateway` and `my-deployment`:
 
 ```text
 platform-configs/hub-cluster/workloads/
